@@ -6,6 +6,7 @@ from sklearn import svm
 import glob
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
 
 
 
@@ -18,21 +19,20 @@ print();
 
 
 
-def fd_hu_moments(image):
+
+def Hu_Moments(image):#reference from -https://gogul09.github.io/software/image-classification-python
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    feature = cv2.HuMoments(cv2.moments(image)).flatten()
-    return feature
-# feature-descriptor-3: Color Histogram
-def fd_histogram(image, mask=None):
+    feature = cv2.HuMoments(cv2.moments(image))
+    return feature.flatten()
+
+def hog(image):#reference from -https://gogul09.github.io/software/image-classification-python
     bins=8;
-    # convert the image to HSV color-space
     image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    # compute the color histogram
     hist  = cv2.calcHist([image], [0, 1, 2], None, [bins, bins, bins], [0, 256, 0, 256, 0, 256])
-    # normalize the histogram
     cv2.normalize(hist, hist)
-    # return the histogram
-    return hist.flatten()
+    o=hist.flatten()
+    return o
+
 
 
 labels1 = []
@@ -46,9 +46,10 @@ for name in train_labels:
 
         image = cv2.imread(img)
         image = cv2.resize(image, (500, 500));
-        fv_hu_moments = fd_hu_moments(image);
-        fv_histogram = fd_histogram(image);
-        global_feature = np.hstack([fv_histogram,fv_hu_moments]);
+        if1 = Hu_Moments(image);
+        if2 = hog(image);
+        global_feature = np.hstack([if2,if1]);
+        #h=hog(image);
         global_features1.append(global_feature);
         #labels.append(current_label)
         if(name=='character_1_ka'):
@@ -81,14 +82,17 @@ global_features2 = [];
 i,j,k,l,m,n=0,0,0,0,0,0;
 
 for name2 in train_labels:
+    print(name2)
     path = os.path.join('/Users/nitishatal/PycharmProjects/ML_hw2/Test', name2);
-    current_label = name;
-    for img in glob.glob("/Users/nitishatal/PycharmProjects/ML_hw2/Test" + "/" + name2 + "/*.png"):
+    current_label = name2;
+    for img2 in glob.glob("/Users/nitishatal/PycharmProjects/ML_hw2/Test" + "/" + name2 + "/*.png"):
 
-        image = cv2.imread(img);
-        image = cv2.resize(image, (500, 500));
-        fv_hu_moments = fd_hu_moments(image);
-        global_feature2 = np.hstack([fv_hu_moments]);
+        image2 = cv2.imread(img2);
+        image2 = cv2.resize(image2, (500, 500));
+        fv_hu_moments2 = Hu_Moments(image2);
+        fv_histogram = hog(image2);
+        global_feature2 = np.hstack([fv_histogram,fv_hu_moments2]);
+        #h2 = hog(image2);
         global_features2.append(global_feature2);
         # labels.append(current_label)
         if (name2 == 'character_1_ka'):
@@ -131,8 +135,11 @@ print(trainfeatures1.shape);
 
 trainfeatures2 = np.array(global_features2);
 trainlabels2 = np.array(labels2);
+
 odata=np.array(trainfeatures2);
+print('Shapetest'+str(odata.shape));
 olabel=np.array(trainlabels2);
+print('Shapetestlabel'+str(olabel.shape));
 
 
 
@@ -147,19 +154,21 @@ print()
 
 # Grid Search
 # Parameter Grid
-#param_grid = {'C': [0.1, 1, 10, 100,1000], 'gamma': [1, 0.1, 0.01, 0.001, 0.00001, 10,0.00000001]}
-param_grid = {'C': [0.1, 1], 'gamma': [1, 0.1]}
+#param_grid = {'C': [0.1, 1, 10, 100], 'gamma': [1, 0.1, 0.01, 0.001, 0.00001, 10]}
+#param_grid = {'C': [0.1, 1], 'gamma': [1, 0.1]}
 
-#clf=svm.SVC(kernel='rbf',C=10000); #svm with rbf kernel
+clf=svm.SVC(kernel='linear',C=100,gamma=10); #svm with rbf kernel
 # Make grid search classifier
-clf = GridSearchCV(svm.SVC(kernel='rbf'), param_grid, verbose=1)
+#clf = GridSearchCV(svm.SVC(kernel='rbf'),param_grid, verbose=1)
 print(clf)
 clf.fit(trainData,trainLabels); # fitting our model
-print("Best Parameters:\n", clf.best_params_)
-print("Best Estimators:\n", clf.best_estimator_)
+#print("Best Parameters:\n", clf.best_params_)
+#print("Best Estimators:\n", clf.best_estimator_)
 
 y_pred_train=clf.predict(trainData);
 training_acc=accuracy_score(trainLabels,y_pred_train);
+s_t=clf.score(global_features2,labels2)
+print(s_t);
 print("Training Accuracy  : {}".format(training_acc));
 #print(classification_report(y_test, y_pred))
 print()
@@ -173,5 +182,10 @@ y_pred_test=clf.predict(odata);
 test_acc=accuracy_score(olabel,y_pred_test);
 print("Test Accuracy  : {}".format(test_acc));
 print()
+
+# confusion Matrix for test set:
+cmatrix=confusion_matrix(olabel,y_pred_test);
+print(cmatrix)
+
 
 
